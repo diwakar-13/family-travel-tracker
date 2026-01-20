@@ -21,9 +21,11 @@ const db = new pg.Client({
 db.connect();
 
 // ================= MIDDLEWARE =================
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static("public"));
 app.set("view engine", "ejs");
+
 
 // ================= GLOBAL STATE =================
 let currentUserId = 1;
@@ -59,6 +61,9 @@ function renderIndex(res, options = {}) {
     users: users || [],
     color: options.color || "gray",
     error: options.error || null,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   });
 }
 
