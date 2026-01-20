@@ -1,59 +1,67 @@
+// ================= ENV =================
 import dotenv from "dotenv";
 dotenv.config();
+
 import express from "express";
-import bodyParser from "body-parser";
+// ❌ REMOVED: body-parser (not needed)
+// import bodyParser from "body-parser";
+
 import pg from "pg";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000; // ✅ SAME AS YOUR CODE
 
 // ================= DATABASE =================
-const db = new pg.Client({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
+
+// 🔴 CHANGED: use Pool instead of Client
+const { Pool } = pg;
+
+// 🔴 CHANGED: use DATABASE_URL (Railway/Neon)
+// ❌ REMOVED: DB_USER, DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+
+  // 🔴 CHANGED: SSL required for cloud PostgreSQL
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-
-
-db.connect();
+// ❌ REMOVED: db.connect()
+// Pool handles connections automatically
 
 // ================= MIDDLEWARE =================
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(express.static("public"));
-app.set("view engine", "ejs");
-
+app.use(express.urlencoded({ extended: true })); // ✅ SAME
+app.use(express.json()); // ✅ SAME
+app.use(express.static("public")); // ✅ SAME
+app.set("view engine", "ejs"); // ✅ SAME
 
 // ================= GLOBAL STATE =================
+// ⚠️ SAME AS YOUR CODE (not production-safe, but OK for now)
 let currentUserId = 1;
 let users = [];
 
 // ================= HELPER FUNCTIONS =================
 
-// get visited countries for current user
+// ✅ SAME AS YOUR CODE
 async function checkVisited() {
   const result = await db.query(
     "SELECT country_code FROM visited_country WHERE user_id = $1;",
     [currentUserId]
   );
-
   return result.rows.map(row => row.country_code);
 }
 
-// get users + current user safely
+// ✅ SAME AS YOUR CODE
 async function getCurrentUser() {
   const result = await db.query("SELECT * FROM users");
   users = result.rows || [];
 
   if (users.length === 0) return null;
-
   return users.find(u => u.id == currentUserId) || users[0];
 }
 
-// ALWAYS-safe render for index.ejs
+// ✅ SAME AS YOUR CODE
 function renderIndex(res, options = {}) {
   res.render("index.ejs", {
     countries: options.countries || [],
@@ -61,15 +69,12 @@ function renderIndex(res, options = {}) {
     users: users || [],
     color: options.color || "gray",
     error: options.error || null,
-    ssl: {
-      rejectUnauthorized: false,
-    },
   });
 }
 
 // ================= ROUTES =================
 
-// HOME
+// ✅ SAME AS YOUR CODE
 app.get("/", async (req, res) => {
   try {
     const countries = await checkVisited();
@@ -85,12 +90,11 @@ app.get("/", async (req, res) => {
   }
 });
 
-// ADD COUNTRY
+// ✅ SAME AS YOUR CODE
 app.post("/add", async (req, res) => {
   try {
     const input = req.body.country;
 
-    // accidental click / empty input
     if (!input || input.trim() === "") {
       return res.redirect("/");
     }
@@ -124,6 +128,7 @@ app.post("/add", async (req, res) => {
     res.redirect("/");
   } catch (err) {
     console.log(err);
+
     const countries = await checkVisited();
     const currentUser = await getCurrentUser();
 
@@ -135,7 +140,7 @@ app.post("/add", async (req, res) => {
   }
 });
 
-// SWITCH / ADD USER
+// ✅ SAME AS YOUR CODE
 app.post("/user", (req, res) => {
   if (req.body.add === "new") {
     res.render("new.ejs");
@@ -145,7 +150,7 @@ app.post("/user", (req, res) => {
   }
 });
 
-// CREATE NEW USER
+// ✅ SAME AS YOUR CODE
 app.post("/new", async (req, res) => {
   const { name, color } = req.body;
 
@@ -160,5 +165,6 @@ app.post("/new", async (req, res) => {
 
 // ================= SERVER =================
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  // 🔴 CHANGED: removed localhost (Railway has no localhost)
+  console.log(`Server running on port ${port}`);
 });
